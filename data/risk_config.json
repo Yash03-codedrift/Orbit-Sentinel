@@ -1,0 +1,1 @@
+{"_default": {"1": {"config_id": "risk_bands", "bands": [{"key": "CRITICAL", "min_score": 0.15, "color": "#FF2D55"}, {"key": "HIGH", "min_score": 0.05, "color": "#FF6B35"}, {"key": "MEDIUM", "min_score": 0.01, "color": "#FFB800"}, {"key": "LOW", "min_score": 0.001, "color": "#00D4FF"}]}}}

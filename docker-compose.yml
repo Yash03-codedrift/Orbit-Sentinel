@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - USE_TINYDB=true          # No MongoDB needed by default
+      - MONGODB_DB_NAME=orbit_sentinel
+      - CONJUNCTION_THRESHOLD_KM=5.0
+      - PROPAGATION_HOURS=72
+      - RISK_THRESHOLD=0.0001
+      - WEBHOOK_SECRET=changeme
+      - FRONTEND_URL=http://localhost:5173
+    volumes:
+      - ./ml_models:/app/ml_models
+      - ./data:/app/data           # TinyDB JSON files persist here
+      - ./tle_cache.json:/app/tle_cache.json
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # Optional MongoDB — uncomment if you want to use it instead of TinyDB
+  # mongo:
+  #   image: mongo:7
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongo_data:/data/db
+
+# volumes:
+#   mongo_data:

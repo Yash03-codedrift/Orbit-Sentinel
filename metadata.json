@@ -1,0 +1,5 @@
+{
+  "name": "Orbit Sentinel",
+  "description": "Space Situational Awareness and Autonomous Conjunction Assessment platform — real-time collision risk detection, multi-agent avoidance planning, and 3D orbital visualization for LEO debris management.",
+  "requestFramePermissions": []
+}

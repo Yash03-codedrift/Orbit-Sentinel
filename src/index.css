@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom overlay/glow effects for the cosmic space theme */
+body {
+  background-color: #03050a;
+  color: #cbd5e1;
+  font-family: var(--font-sans);
+  /* overflow managed per-page: landing scrolls, dashboard is hidden */
+}
+
+/* Dashboard page: lock overflow at the root div level (set in MainDashboard inline style) */
+/* Landing page: scrollable by default */
+
+/* Scrollbar customizations */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(3, 5, 10, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
+/* Neon Glow classes */
+.glow-blue {
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.15);
+}
+.glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+}
+.glow-green {
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+}
+.text-neon-cyan {
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+}
+.text-neon-danger {
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+.text-neon-green {
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}

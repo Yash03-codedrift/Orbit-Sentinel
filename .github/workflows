@@ -1,0 +1,60 @@
+name: Deploy Vite React App
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+        
+      - name: Build project
+        run: |
+          cd frontend
+          npm run build
+          
+      - name: Find and Move Dist Folder Automatically
+        run: |
+          DIST_PATH=$(find . -name "dist" -type d -not -path "*/node_modules/*" | head -n 1)
+          if [ -n "$DIST_PATH" ]; then
+            echo "Found dist at $DIST_PATH, moving to root..."
+            mv "$DIST_PATH" ./dist_root
+          else
+            echo "Error: dist folder not found anywhere!"
+            exit 1
+          fi
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist_root'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
