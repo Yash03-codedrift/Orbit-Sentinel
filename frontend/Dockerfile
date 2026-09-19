@@ -10,6 +10,8 @@ COPY src/ ./src/
 COPY public/ ./public/
 COPY index.html vite.config.ts tsconfig.json ./
 
+ARG VITE_API_KEY
+ENV VITE_API_KEY=$VITE_API_KEY
 RUN npm run build
 
 # Stage 2: Serve

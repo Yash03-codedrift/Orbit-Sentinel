@@ -14,6 +14,7 @@ services:
       - WEBHOOK_SECRET=changeme
       - FRONTEND_URL=http://localhost:5173
       - OPENSEARCH_URL=http://opensearch:9200
+      - API_KEY=${VITE_API_KEY}
     volumes:
       - ./ml_models:/app/ml_models
       - ./data:/app/data           # TinyDB JSON files persist here
@@ -25,6 +26,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        - VITE_API_KEY=${VITE_API_KEY}
     ports:
       - "80:80"
     depends_on:
