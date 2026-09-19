@@ -15,6 +15,7 @@ services:
       - RISK_THRESHOLD=0.0001
       - WEBHOOK_SECRET=changeme
       - FRONTEND_URL=http://localhost:5173
+      - OPENSEARCH_URL=
     volumes:
       - ./ml_models:/app/ml_models
       - ./data:/app/data           # TinyDB JSON files persist here
