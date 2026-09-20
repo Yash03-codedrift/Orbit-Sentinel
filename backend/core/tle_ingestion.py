@@ -216,7 +216,7 @@ async def store_tle_snapshot(db: AsyncIOMotorDatabase, count: int, source: str) 
     }
     result = await db["tle_snapshots"].insert_one(snapshot_doc)
     logger.info(f"Captured active snapshot log record. Count: {count} elements.")
-    return str(result.inserted_id)
+    return str(getattr(result, "inserted_id", "") or "")
 
 async def fetch_satcat_owner_map() -> Dict[str, str]:
     """

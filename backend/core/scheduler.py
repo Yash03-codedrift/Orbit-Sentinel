@@ -9,7 +9,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from backend.config import settings
 from backend.utils.time_utils import utc_now, datetime_to_iso
 from backend.db.satellite_repo import get_all_satellites
-from backend.db.conjunction_repo import insert_conjunction, get_active_conjunctions
+from backend.db.conjunction_repo import insert_conjunction, get_active_conjunctions, expire_past_conjunctions
 from backend.db.maneuver_repo import insert_maneuver
 from backend.db.audit_repo import append_audit_entry
 
@@ -119,7 +119,7 @@ class SentinelScheduler:
         self.scheduler.add_job(self.job_cleanup_old_data, IntervalTrigger(days=1), id="job_cleanup_old_data")
         
         self.scheduler.start()
-        asyncio.ensure_future(self.job_propagate_and_detect())
+        pass  # the startup sweep is already scheduled above via next_run_time
         logger.info("SentinelScheduler activated with staggered pipeline offsets.")
 
     async def job_ingest_tles(self) -> None:
@@ -188,6 +188,7 @@ class SentinelScheduler:
 
     async def job_check_thresholds(self) -> None:
         try:
+            await expire_past_conjunctions(self.db)
             risk_threshold = getattr(settings, "RISK_THRESHOLD", 0.0001)
             cursor = self.db["conjunctions"].find({
                 "resolved": False,

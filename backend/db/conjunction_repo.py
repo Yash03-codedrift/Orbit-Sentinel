@@ -41,11 +41,54 @@ async def insert_conjunction(db: AsyncIOMotorDatabase, conjunction_dict: Dict[st
         logger.error(f"Failed to upsert conjunction for pair {pair_key}: {e}")
         return None
 
+EXPIRY_GRACE_SECONDS = 120
+
+
+def _parse_tca(value):
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+    return None
+
+
+async def expire_past_conjunctions(db) -> int:
+    """
+    Closes conjunctions whose closest approach is already in the past. Nothing can be done about
+    them any more, so they must not count as active or trigger maneuvers. The record is kept
+    (resolved=True, resolution_reason="expired") so history stays intact. If the same pair is
+    detected again later with a new future TCA, the next sweep re-opens it automatically.
+    """
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=EXPIRY_GRACE_SECONDS)
+    expired = 0
+    try:
+        open_events = await db["conjunctions"].find({"resolved": False}).to_list(length=5000)
+        for ev in open_events:
+            tca = _parse_tca(ev.get("tca_utc"))
+            if tca is not None and tca < cutoff and ev.get("event_id"):
+                await db["conjunctions"].update_one(
+                    {"event_id": ev["event_id"]},
+                    {"$set": {"resolved": True, "resolution_reason": "expired", "resolved_at": now.isoformat()}},
+                )
+                expired += 1
+    except Exception as exc:
+        logger.error(f"Could not expire past conjunctions: {exc}")
+    if expired:
+        logger.info(f"Expired {expired} conjunction(s) whose TCA has passed")
+    return expired
+
+
 async def get_active_conjunctions(db: AsyncIOMotorDatabase) -> List[Dict[str, Any]]:
     """
     Retrieves all high-risk close-approach incidents currently flagged as unresolved,
     sorted by Time of Closest Approach (TCA UTC) in ascending order.
     """
+    await expire_past_conjunctions(db)
     cursor = db["conjunctions"].find({"resolved": False}).sort("tca_utc", 1)
     return await cursor.to_list(length=1000)
 
