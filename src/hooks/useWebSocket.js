@@ -41,14 +41,17 @@ export function useWebSocket() {
           }
         }
         
-        if (msg.type === 'maneuver_computed') { 
-          useManeuverStore.getState().addManeuver(msg.maneuver) 
+        if (msg.type === 'maneuver_computed') {
+          if (msg.maneuver) {
+            useManeuverStore.getState().setActiveManeuver(msg.maneuver)
+            useManeuverStore.getState().addManeuver(msg.maneuver)
+          }
           if (msg.conjunction_event_id) {
             useConjunctionStore.getState().updateConjunction({
               event_id: msg.conjunction_event_id,
               resolved: true,
               maneuvered: true,
-              maneuver_id: msg.maneuver.maneuver_id
+              maneuver_id: msg.maneuver?.maneuver_id
             })
           }
         }
