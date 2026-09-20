@@ -298,59 +298,72 @@ If MongoDB is not available, the app will fall back to the built-in TinyDB datab
 orbit-sentinel/
 ├── backend/
 │   ├── core/
-│   │   ├── sgp4_propagator.py         # SGP4 engine + batch propagation
-│   │   ├── conjunction_detector.py    # KDTree + parabolic TCA refinement + Chan Pc
-│   │   ├── risk_scorer.py             # Kessler index, risk classification, prioritization
-│   │   ├── maneuver_calculator.py     # Δv planning + secondary check
-│   │   ├── cascade_simulator.py       # Kessler cascade physics model
-│   │   ├── secondary_check.py         # Post-maneuver re-screening
-│   │   ├── scheduler.py               # APScheduler: TLE refresh + conjunction loop
-│   │   ├── tle_ingestion.py           # CelesTrak fetch + SATCAT owner lookup
-│   │   └── webhook_dispatcher.py      # HMAC-signed webhook payload dispatch
-│   ├── ml/
-│   │   ├── collision_probability_ann.py   # ANN classifier (12 features, 50k synthetic)
-│   │   ├── trajectory_lstm.py             # PyTorch LSTM residual predictor
-│   │   ├── rl_maneuver_agent.py           # PPO agent (SB3, 200k steps)
-│   │   ├── marl_coordinator.py            # CTDE multi-agent coordinator
-│   │   └── feature_engineering.py        # Input pipeline for all ML models
-│   ├── routers/
-│   │   ├── conjunction_router.py      # /api/conjunctions — CRUD + CDM export
-│   │   ├── maneuver_router.py         # /api/maneuvers — plan, verify, history
-│   │   ├── analytics_router.py        # /api/analytics — ML metrics, benchmarks, KRI
-│   │   ├── tle_router.py              # /api/tle — positions, status, refresh
-│   │   ├── satellite_router.py        # /api/satellites — catalog, search
-│   │   ├── audit_router.py            # /api/audit — immutable event log
-│   │   └── websocket_router.py        # /ws — live telemetry push
+│   │   ├── scheduler.py               # APScheduler loop for TLE sync + threshold checks
+│   │   ├── tle_ingestion.py           # CelesTrak / SatNOGS TLE ingestion and cache
+│   │   ├── conjunction_detector.py    # Pair screening + collision detection logic
+│   │   ├── risk_scorer.py             # Risk scoring + Kessler index helpers
+│   │   ├── maneuver_calculator.py     # Maneuver plan generation and burn planning
+│   │   ├── secondary_check.py         # Post-burn verification and re-screening
+│   │   ├── sgp4_propagator.py         # Propagation utilities for satellite state windows
+│   │   ├── spatial_index.py           # Broad-phase spatial pairing helpers
+│   │   ├── webhook_dispatcher.py      # Payload generation and webhook simulation
+│   │   ├── cascade_simulator.py       # Secondary risk / cascade model
+│   │   └── screening.py              # Threshold screening utilities
 │   ├── db/
-│   │   ├── tinydb_client.py           # Zero-setup TinyDB adapter (MongoDB-compatible API)
-│   │   ├── mongo_client.py            # MongoDB async client
-│   │   ├── conjunction_repo.py        # Conjunction persistence layer
-│   │   └── satellite_repo.py          # Satellite catalog persistence
-│   ├── utils/
-│   │   ├── coordinate_transforms.py   # ECI↔ECEF↔geodetic↔RTN↔Keplerian
-│   │   └── orbital_math.py            # Chan Pc, Kessler index, vis-viva
-│   └── tests/
-│       └── test_physics.py            # 10-case physics validation suite
+│   │   ├── mongo_client.py            # MongoDB async client and index setup
+│   │   ├── tinydb_client.py           # TinyDB fallback adapter for local use
+│   │   ├── conjunction_repo.py        # Conjunction persistence and expiry logic
+│   │   ├── maneuver_repo.py            # Maneuver storage and retrieval
+│   │   ├── satellite_repo.py          # Satellite catalog CRUD
+│   │   ├── audit_repo.py              # Event log persistence
+│   │   ├── risk_config_repo.py        # Risk band configuration
+│   │   └── kessler_history_repo.py    # Daily Kessler snapshots
+│   ├── ml/
+│   │   ├── collision_probability_ann.py # ANN classification pipeline
+│   │   ├── trajectory_lstm.py         # LSTM-based deviation prediction
+│   │   ├── rl_maneuver_agent.py       # RL maneuver policy and training hooks
+│   │   ├── marl_coordinator.py        # Coordinated multi-agent logic
+│   │   ├── model_registry.py          # Local model metadata registry
+│   │   └── feature_engineering.py     # Synthetic and live feature preparation
+│   ├── routers/
+│   │   ├── conjunction_router.py      # /api/conjunctions endpoints
+│   │   ├── maneuver_router.py         # /api/maneuvers endpoints
+│   │   ├── analytics_router.py        # /api/analytics / kessler endpoints
+│   │   ├── tle_router.py              # /api/tle status and refresh
+│   │   ├── satellite_router.py        # /api/satellites endpoints
+│   │   ├── audit_router.py            # /api/audit log endpoints
+│   │   ├── risk_config_router.py     # /api/risk-config endpoints
+│   │   └── websocket_router.py        # /ws real-time updates
+│   ├── tests/
+│   │   └── test_physics.py            # Physics and threshold regression checks
+│   ├── config.py                     # App settings and environment config
+│   ├── main.py                      # FastAPI app bootstrap and scheduler startup
+│   └── requirements.txt             # Backend Python dependencies
+│
+├── src/
+│   ├── App.tsx                      # Root app shell and demo wiring
+│   ├── main.tsx                     # Frontend entry point
+│   ├── api/                         # API client wrappers
+│   ├── components/                  # Globe, dashboard, analytics, panels
+│   ├── hooks/                      # WebSocket and position hooks
+│   ├── pages/                      # Landing and dashboard pages
+│   ├── store/                      # Zustand application state
+│   └── utils/
+├── public/
+├── docs/
+│   └── screenshots/                # Dashboard snapshots and validation images
 ├── ml_models/
-│   ├── ppo_maneuver_agent.zip         # Pre-trained PPO (200k steps, committed)
-│   ├── ppo_maneuver_agent_training_curve.json
-│   ├── lstm_model.pt                  # Pre-trained PyTorch LSTM
-│   ├── ann_model.pkl                  # Trained ANN classifier
-│   └── ann_scaler.pkl                 # StandardScaler for ANN input
-├── src/                               # React + TypeScript frontend
-│   ├── components/
-│   │   ├── GlobeScene.tsx             # Three.js InstancedMesh globe
-│   │   ├── MLPanel.tsx                # ML STATUS tab (ANN/LSTM/PPO/MARL)
-│   │   ├── AnalyticsDashboard.tsx     # Charts and KRI analytics
-│   │   ├── ConjunctionFeed.tsx        # Live conjunction event list
-│   │   ├── ManeuverPanel.tsx          # Δv display + burn approval
-│   │   ├── AuditLog/AuditLog.tsx      # Security audit log
-│   │   └── Dashboard/MainDashboard.tsx # Root layout + cinematic mode
-│   └── store/
-│       ├── useGlobeStore.ts           # Satellite positions + selection state
-│       └── useConjunctionStore.ts     # Conjunction event state
-├── rust_sgp4/                         # Optional Rust SGP4 bridge (PyO3)
-└── docker-compose.yml
+│   ├── ann_model_metrics.json
+│   ├── lstm_model.pt
+│   └── ppo_maneuver_agent_training_curve.json
+├── rust_sgp4/                     # Optional Rust telemetry/propagation bridge
+├── docker-compose.yml
+├── .env.example
+├── package.json
+├── README.md
+├── INTEGRATION_CHECKLIST.md
+├── metadata.json
+└── vite.config.ts
 ```
 
 ---
@@ -362,33 +375,35 @@ orbit-sentinel/
 - Python 3.10+
 - MongoDB (optional — TinyDB works out of the box)
 
-### Option A: No Docker, No MongoDB (Fastest)
+### Option A: Local development (recommended)
 
 ```bash
-# 0. Clone the repository
-git clone https://github.com/Pengui0/Orbit_Sentinel_Dev.git
-cd Orbit_Sentinel_Dev
+# 1. Clone the repository
+git clone <repo-url>
+cd orbit-sentinel-fixed
 
-# 1. Install backend dependencies
-pip install -r backend/requirements.txt
+# 2. Install backend dependencies
+python -m pip install -r backend/requirements.txt
 
-# 2. Install frontend dependencies
+# 3. Install frontend dependencies
 npm install
 
-# 3. Start backend (TinyDB auto-enabled)
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
+# 4. Start backend
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
-# 4. Start frontend (new terminal)
+# 5. Start frontend in a second terminal
 npm run dev
 ```
 
-Frontend: `http://localhost:5173` · Backend: `http://localhost:8000` · API Docs: `http://localhost:8000/docs`
+Frontend: http://localhost:3000
+Backend: http://localhost:8000
+API docs: http://localhost:8000/docs
 
 ### Option B: Docker Compose
 
 ```bash
 cp .env.example .env
-# Fill in MONGO_URI if using MongoDB Atlas
+# Optional: set MONGODB_URI if you want MongoDB instead of TinyDB
 docker compose up --build
 ```
 
@@ -396,12 +411,17 @@ docker compose up --build
 
 | Variable | Default | Description |
 |---|---|---|
-| `USE_TINYDB` | `true` | Use TinyDB instead of MongoDB |
-| `MONGODB_URI` | — | MongoDB Atlas connection string |
-| `SPACETRACK_USERNAME` | — | space-track.org credentials |
-| `SPACETRACK_PASSWORD` | — | space-track.org credentials |
-| `CONJUNCTION_THRESHOLD_KM` | `5.0` | Close-approach detection radius |
-| `PROPAGATION_HOURS` | `72` | Look-ahead window for conjunction screening |
+| `USE_TINYDB` | `true` | Force the local TinyDB fallback instead of MongoDB |
+| `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection string when MongoDB is enabled |
+| `MONGODB_DB_NAME` | `orbit_sentinel` | Database name used by the backend |
+| `SPACETRACK_USERNAME` | — | optional space-track.org credentials |
+| `SPACETRACK_PASSWORD` | — | optional space-track.org credentials |
+| `CONJUNCTION_THRESHOLD_KM` | `5.0` | close-approach screening threshold in km |
+| `PROPAGATION_HOURS` | `72` | future propagation window used by screening |
+| `TLE_REFRESH_INTERVAL_MINUTES` | `10` | scheduler interval for TLE refreshes |
+| `RISK_THRESHOLD` | `0.0001` | minimum risk score required before the auto-maneuver job is triggered |
+| `WEBHOOK_SECRET` | `changeme` | secret used for webhook/API validation |
+| `FRONTEND_URL` | `http://localhost:3000` | frontend origin allowed by CORS |
 
 > `.env` is gitignored. Never commit credentials.
 
