@@ -127,54 +127,64 @@ class TinyCollection:
 
     def _build_query(self, query: Dict):
         """
-        Translates a subset of MongoDB query operators into TinyDB Query objects.
-        Supported: equality, $or, $gte, $lte, $text (regex fallback), $in.
+        Translates a subset of MongoDB query operators into a TinyDB-compatible
+        predicate function. This keeps the fallback database behavior aligned with
+        the scheduler and router filters used in production.
         """
         if not query:
             return None
 
-        Q = Query()
-        parts = []
+        def matches(doc: Dict) -> bool:
+            for key, val in query.items():
+                if key == "$or":
+                    if not any(
+                        (sub_query := self._build_query(sub)) and sub_query(doc)
+                        for sub in val if sub
+                    ):
+                        return False
+                    continue
 
-        for key, val in query.items():
-            if key == "$or":
-                sub = [self._build_query(c) for c in val if c]
-                sub = [s for s in sub if s is not None]
-                if sub:
-                    combined = sub[0]
-                    for s in sub[1:]:
-                        combined = combined | s
-                    parts.append(combined)
-            elif key == "$text":
-                search_str = val.get("$search", "")
-                # Fallback: search all string fields for the term
-                pattern = re.compile(re.escape(search_str), re.IGNORECASE)
-                parts.append(Q.noop().test(
-                    lambda doc, p=pattern: any(
-                        isinstance(v, str) and p.search(v)
-                        for v in doc.values()
-                    )
-                ))
-            elif isinstance(val, dict):
-                for op, operand in val.items():
-                    if op == "$gte":
-                        parts.append(Q[key] >= operand)
-                    elif op == "$lte":
-                        parts.append(Q[key] <= operand)
-                    elif op == "$in":
-                        parts.append(Q[key].one_of(operand))
-                    elif op == "$regex":
-                        pattern = re.compile(operand, re.IGNORECASE)
-                        parts.append(Q[key].matches(operand, flags=re.IGNORECASE))
-            else:
-                parts.append(Q[key] == val)
+                if key == "$text":
+                    search_str = str(val.get("$search", ""))
+                    pattern = re.compile(re.escape(search_str), re.IGNORECASE)
+                    if not any(isinstance(v, str) and pattern.search(v) for v in doc.values()):
+                        return False
+                    continue
 
-        if not parts:
-            return None
-        result = parts[0]
-        for p in parts[1:]:
-            result = result & p
-        return result
+                if isinstance(val, dict):
+                    field_value = doc.get(key)
+                    for op, operand in val.items():
+                        if op == "$gt":
+                            if not (field_value is not None and field_value > operand):
+                                return False
+                        elif op == "$lt":
+                            if not (field_value is not None and field_value < operand):
+                                return False
+                        elif op == "$gte":
+                            if not (field_value is not None and field_value >= operand):
+                                return False
+                        elif op == "$lte":
+                            if not (field_value is not None and field_value <= operand):
+                                return False
+                        elif op == "$ne":
+                            if field_value == operand:
+                                return False
+                        elif op == "$in":
+                            if field_value not in operand:
+                                return False
+                        elif op == "$regex":
+                            if not isinstance(field_value, str) or not re.search(operand, field_value, re.IGNORECASE):
+                                return False
+                        else:
+                            return False
+                    continue
+
+                if doc.get(key) != val:
+                    return False
+
+            return True
+
+        return matches
 
 
 class TinyCursor:

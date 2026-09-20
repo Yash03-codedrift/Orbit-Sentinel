@@ -9,6 +9,7 @@ Run with:
 import math
 import sys
 import os
+import asyncio
 import numpy as np
 import pytest
 from datetime import datetime, timezone
@@ -202,3 +203,35 @@ def test_ann_label_generation_sanity():
     pos_rate = y.mean()
     assert 0.01 < pos_rate < 0.5, \
         f"Positive class rate should be 1–50% for balanced physics labels, got {pos_rate:.4f}"
+
+
+def test_tinydb_threshold_filters_support_gt_and_ne():
+    """Threshold scheduler filters must work in the TinyDB fallback, not just in MongoDB."""
+    from backend.db.tinydb_client import OrbitDB
+
+    async def _run():
+        db = OrbitDB()
+        coll = db["threshold_filter_regression"]
+        await coll.insert_one({
+            "event_id": "evt_active_high", "resolved": False, "maneuvered": False, "risk_score": 0.42
+        })
+        await coll.insert_one({
+            "event_id": "evt_active_low", "resolved": False, "maneuvered": False, "risk_score": 0.00001
+        })
+        await coll.insert_one({
+            "event_id": "evt_maneuvered", "resolved": False, "maneuvered": True, "risk_score": 0.99
+        })
+        await coll.insert_one({
+            "event_id": "evt_resolved", "resolved": True, "maneuvered": False, "risk_score": 0.99
+        })
+
+        query = {
+            "resolved": False,
+            "maneuvered": {"$ne": True},
+            "risk_score": {"$gt": 0.0001},
+        }
+        matches = await coll.find(query).to_list(length=50)
+        assert [m["event_id"] for m in matches] == ["evt_active_high"], matches
+        assert await coll.count_documents(query) == 1, "TinyDB should support $gt and $ne filters used by the scheduler"
+
+    asyncio.run(_run())
