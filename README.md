@@ -10,7 +10,7 @@
   ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝   ╚═╝       ╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝
 ```
 
-> **Real-time orbital propagation. Physics-grade collision detection. Multi-agent autonomous avoidance. All live.**
+> **Real-time orbital propagation, conjunction screening, and autonomous maneuver evaluation for live and fallback data sources.**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
@@ -23,9 +23,28 @@
 
 ## What Is This?
 
-Orbit Sentinel is a **production-grade, full-stack Space Situational Awareness (SSA) platform** that ingests live Two-Line Element (TLE) data from CelesTrak, propagates 1,500+ satellite states in real time using SGP4, detects close-approach conjunction events through KDTree spatial indexing, computes physics-calibrated collision probabilities via the Chan/Foster analytical formulation, and autonomously plans fuel-optimal avoidance maneuvers through a stack of three ML models running in parallel — all visualised on a live 3D WebGL globe.
+Orbit Sentinel is a full-stack Space Situational Awareness (SSA) platform that ingests TLE data, propagates satellite states, screens for close approaches, scores collision risk, and evaluates avoidance maneuvers. The current build includes a working API, scheduler-driven detection loop, fallback data handling, and a live dashboard for monitoring conjunctions and maneuver decisions.
 
-This is not a prototype. Every module — propagation, detection, probability computation, maneuver planning, cascade simulation — is built to aerospace engineering standards and validated against real historical collision data.
+This project is built for practical monitoring and operational visibility, with a clear distinction between live data and fallback behavior. If CelesTrak is unreachable, the app falls back to SatNOGS, and the displayed data can lag behind the most recent live catalog state.
+
+---
+
+## Operational status and known caveats
+
+- **TLE source fallback:** The app first tries CelesTrak. If that source is blocked or slow, it falls back to SatNOGS. SatNOGS is useful but can be older than a live catalog and may delay alert generation.
+- **Automatic maneuver loop:** The scheduler runs a threshold check every 60 seconds, filters for unresolved conjunctions with risk above the configured threshold, and triggers an autonomous maneuver path when the record qualifies.
+- **Maneuvers today count:** This value reflects recent maneuver records in the DB and can stay at 0 until a fresh threshold check or a manual trigger populates data.
+- **Data freshness matters:** If the TLE feed is stale, propagation quality falls with it. Risk scoring and maneuver evaluation are only as good as the current orbital catalog.
+
+---
+
+## Feature additions included in this build
+
+- **Autonomous threshold screening:** Executes the risk gate and triggers maneuver generation on qualifying conjunctions.
+- **Fallback TLE ingestion:** Keeps the app running when live CelesTrak access is blocked.
+- **Maneuver tracking and verification:** Stores maneuver records and schedules follow-up verification checks.
+- **Live conjunction and system monitoring:** Displays active threats, Kessler risk signals, and scheduler status in the dashboard.
+- **Zero-setup DB mode:** Keeps the project runnable without external infrastructure when MongoDB is not available.
 
 ---
 
@@ -223,7 +242,27 @@ cd backend && pytest tests/ -v
 
 ---
 
-## 🛠️ Tech Stack
+## � Quick start
+
+```bash
+# install dependencies
+python -m pip install -r backend/requirements.txt
+
+# start the backend
+cd backend
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# start the frontend
+cd frontend
+npm install
+npm run dev
+```
+
+If MongoDB is not available, the app will fall back to the built-in TinyDB database and keep running without blocking startup.
+
+---
+
+## �🛠️ Tech Stack
 
 ### Backend
 | Component | Technology |

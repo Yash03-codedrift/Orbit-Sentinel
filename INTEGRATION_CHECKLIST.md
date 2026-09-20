@@ -36,7 +36,7 @@ This checklist documents the integration of the **Demo Mode system**, the **Comp
 
 ---
 
-## 🧠 3. Artificial Intelligence & Feature Engineering
+## 🧠 3. ML & Feature Engineering
 
 - [x] **Feature Normalization (`backend/ml/feature_engineering.py`)**:
   - Computes exact 12-key inputs formatted precisely for ANN models (handling altitudes, temporal distances, relative speeds, solar indices, and structural categories).
