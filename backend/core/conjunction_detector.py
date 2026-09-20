@@ -11,6 +11,7 @@ from backend.core.spatial_index import build_spatial_index, find_close_pairs, fi
 from backend.utils.orbital_math import compute_altitude
 from backend.utils.coordinate_transforms import compute_range, compute_relative_velocity
 from backend.utils.time_utils import utc_now, datetime_to_iso
+from backend.core.screening import find_candidate_pairs, find_tca_between_pair
 
 try:
     from backend.ml.trajectory_lstm import lstm_predictor as _lstm_predictor
@@ -63,7 +64,7 @@ def _interpolate_state(pt_prev: dict, pt_next: dict, factor: float) -> dict:
             interpolated[key] = pt_prev[key] + factor * (pt_next[key] - pt_prev[key])
     return interpolated
 
-def find_tca_between_pair(
+def _legacy_find_tca_between_pair(
     positions_a: List[dict], 
     positions_b: List[dict], 
     timestamps: List[datetime]
@@ -263,8 +264,8 @@ async def detect_conjunctions(
         return []
 
     # Broad-phase KDTree scan
-    candidate_pairs = set()
-    step_frames = range(0, len(timestamps), 5)
+    candidate_pairs = await asyncio.to_thread(find_candidate_pairs, propagated_states, timestamps, threshold_km, satellites_catalogue)
+    step_frames = []  # old 25-minute scan switched off: find_candidate_pairs() above checks every interval
     for t_idx in step_frames:
         snapshot = get_positions_snapshot(propagated_states, t_idx)
         if not snapshot: continue
@@ -276,6 +277,7 @@ async def detect_conjunctions(
             
     # Narrow-phase Refinement
     for nid_a, nid_b in candidate_pairs:
+        await asyncio.sleep(0)  # lets the API answer while a big sweep runs
         try:
             pos_a_series = propagated_states.get(nid_a)
             pos_b_series = propagated_states.get(nid_b)
